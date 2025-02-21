@@ -1,0 +1,61 @@
+services:
+  web:
+    image: "web_image:1.1.0"
+    container_name: "web_container-1.1.0"
+    volumes:
+      - "./volume:/tmp/"
+    build:
+      context: ./
+      dockerfile: ./dockerfile
+    ports:
+      - "8081:80"
+    depends_on:
+      - app
+
+  app:
+    image: "app-image:1.1.0"
+    container_name: "app-container-1.1.0"
+    volumes:
+      - "./volume:/tmp/"
+    build:
+      context: ./
+      dockerfile: ./dockerfile
+    ports:
+      - "8082:80"
+    networks:
+      - landing_network
+    depends_on:
+      - db
+
+  db:
+    image: "app-image:1.1.0"
+    container_name: "app-container-1.1.0"
+    volumes:
+      - "./volume:/tmp/"
+    build:
+      context: ./
+      dockerfile: ./dockerfile
+    ports:
+      - "8083:80"
+    networks:
+      - landing_network
+    depends_on:
+      - api
+
+  api:
+    image: "app-image:1.1.0"
+    container_name: "app-container-1.1.0"
+    volumes:
+      - "./volume:/tmp/"
+    build:
+      context: ./
+      dockerfile: ./dockerfile
+    ports:
+      - "8084:80"
+    networks:
+      - landing_network
+
+
+networks:
+  landing_network:
+    driver: bridge
