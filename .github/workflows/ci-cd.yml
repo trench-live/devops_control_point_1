@@ -27,6 +27,8 @@ jobs:
           echo "REF NAME      : ${{ github.ref_name }}"
           echo "DEFAULT BRANCH: ${{ steps.parse-data.outputs.default_branch }}"
 
+
+          
   print-data-information:
     runs-on: ubuntu-latest
     steps:
