@@ -1,4 +1,3 @@
-# Pipeline name
 name: Version update pipeline
 
 on:
@@ -6,33 +5,19 @@ on:
     types: [closed]
     branches:
     - release
-env:
-  NAME_VERSION_FILE: version
 jobs:
-  validate-branch:
+  run-script:
     runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/heads/feature/') || startsWith(github.ref, 'refs/heads/release/')
     steps:
-      - name: Parse data
-        id: parse-data
-        uses: tj-actions/branch-name@v8
-      - name: Print info about actions
-        id: repo-info
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.13.2'
+
+      - name: Run Python script
         run: |
-          echo "EVENT NAME    : ${{ github.event_name }}"
-          echo "ACTION        : ${{ github.event.action }}"
-          echo "EVENT NAME    : ${{ github.event_name }}"
-          echo "IS            : ${{ github.event.pull_request.merged }}"
-          echo "CURRENT BRANCH: ${{ steps.parse-data.outputs.current_branch }}"
-          echo "REF           : ${{ github.ref }}"
-          echo "REF NAME      : ${{ github.ref_name }}"
-          echo "DEFAULT BRANCH: ${{ steps.parse-data.outputs.default_branch }}"
-
-
-          
-  print-data-information:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Second step
-        run: echo "Print info"
-      - name: 3 step
-        run: echo "Print info"
+          python script.py
