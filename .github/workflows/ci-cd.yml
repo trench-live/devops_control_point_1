@@ -23,3 +23,16 @@ jobs:
       - name: Run Python script
         run: |
           python .github/workflows/script.py patch
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "you@example.com"
+          git config --global user.name "Your Name"
+
+      - name: Commit and push changes
+        run: |
+          git add version version_log
+          git commit -m "Update version and log"
+          git push origin release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
