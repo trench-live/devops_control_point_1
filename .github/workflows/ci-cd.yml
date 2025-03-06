@@ -5,12 +5,16 @@ on:
     types: [closed]
     branches:
       - release
+
 jobs:
   run-script:
+    if: github.event.pull_request.head.ref == 'feature' || github.event.pull_request.head.ref == 'release'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v2
