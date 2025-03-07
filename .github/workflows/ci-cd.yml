@@ -49,3 +49,33 @@ jobs:
           git push origin release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    docker-push:
+      name: (CI) Docker push
+      permissions:
+        contents: write
+      runs-on: ubuntu-latest
+      needs: [update-version]
+      env:
+        tag: ${{needs.update-version.outputs.tag}}
+      steps:
+        - name: Prepare env
+          run: |
+            echo "show variables"
+            echo [${{env.tag}}]
+        - name: Сheckout on [${{env.RELEASE_BRACH}}] and v [${{env.tag}}]
+          uses: actions/checkout@v2
+
+        - name: Log in to Docker Hub
+          uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
+          with:
+            username: ${{ secrets.DOCKER_HUB_LOGIN }}
+            password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+        - name: Build and push Docker image to DockerHub
+          uses: docker/build-push-action@v2
+          with:
+            context: .
+            file: ./dockerfile
+            push: true
+            tags: ${{ secrets.DOCKER_HUB_LOGIN }}/${{env.REPO_NAME}}:v${{env.tag}}
