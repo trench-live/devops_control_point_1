@@ -46,4 +46,4 @@ jobs:
   security:
     name: Security
     needs: tests
-    uses:  trench-live/devops_control_point_1/.github/workflows/security.yml@release
+    uses: trench-live/devops_control_point_1/.github/workflows/security.yml@release
