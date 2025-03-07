@@ -5,6 +5,7 @@ on:
     types: [closed]
     branches:
       - release
+      - feature
 
 jobs:
   run-script:
