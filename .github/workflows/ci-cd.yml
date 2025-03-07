@@ -7,6 +7,17 @@ on:
       - release
       - feature
 
+env:
+  NAME_VERSION_FILE: ${{ github.workspace }}/version/version
+  RELEASE_BRANCH: release
+  MINOR: minor
+  PATCH: patch
+  VERSION_UP: .github/workflows/script.py
+  REPO_NAME: ${{ github.event.repository.name }}
+  PR_NUMBER: ${{ github.event.number }}
+  URL_REPO: ${{ github.server_url }}/${{ github.repository }}
+  # DOCKER_REPO: ${{ secrets.DOCKER_HUB_LOGIN }}/${{env.REPO_NAME}}
+
 jobs:
   tests:
     name: (TST)
@@ -35,7 +46,7 @@ jobs:
 
       - name: Run Python script
         run: |
-          python .github/workflows/script.py patch
+          python ${{env.VERSION_UP}} ${{env.PATCH}}
 
       - name: Configure Git
         run: |
@@ -49,6 +60,12 @@ jobs:
           git push origin release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get version
+        id: parse-v
+        run: |
+          VERSION=$(cat version)
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
 
   docker-push:
     name: (CI) Docker push
@@ -64,7 +81,7 @@ jobs:
           echo "show variables"
           echo [${{env.tag}}]
       #
-      - name: Сheckout on [${{env.RELEASE_BRACH}}] and v [${{env.tag}}]
+      - name: Сheckout on [${{env.RELEASE_BRANCH}}] and v [${{env.tag}}]
         uses: actions/checkout@v2
 
       - name: Log in to Docker Hub
