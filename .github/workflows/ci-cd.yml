@@ -33,6 +33,8 @@ jobs:
   update-version:
     needs: security
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{steps.parse-v.outputs.VERSION}}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
