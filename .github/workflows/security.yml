@@ -2,11 +2,7 @@ name: Security
 
 on:
   workflow_call:
-    inputs:
-      version:
-        type: string
-        required: true
-        description: "contains version of application"
+
 jobs:
   antivirus:
     runs-on: ubuntu-latest
