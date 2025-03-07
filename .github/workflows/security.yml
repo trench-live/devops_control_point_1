@@ -1,0 +1,28 @@
+name: Security
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+        description: "contains version of application"
+jobs:
+  antivirus:
+    runs-on: ubuntu-latest
+    name: Antivirus
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: '0'
+    - name: Git AV Scan
+      uses: djdefi/gitavscan@main
+      with:
+        full: '--full'
+  lint:
+    runs-on: ubuntu-latest
+    name: Lint
+    steps:
+      - name: first-step
+        run: |
+          echo "all normal"
