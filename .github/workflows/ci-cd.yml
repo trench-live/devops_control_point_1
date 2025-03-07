@@ -8,7 +8,19 @@ on:
       - feature
 
 jobs:
+  tests:
+    name: (TST)
+    uses: trench-live/devops_control_point_1/.github/workflows/test.yml@release
+    with:
+      version: alpha
+
+  security:
+    name: Security
+    needs: tests
+    uses: trench-live/devops_control_point_1/.github/workflows/security.yml@release
+
   run-script:
+    needs: security
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -37,13 +49,3 @@ jobs:
           git push origin release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  tests:
-    name: (TST)
-    needs: run-script
-    uses: trench-live/devops_control_point_1/.github/workflows/test.yml@release
-    with:
-      version: alpha
-  security:
-    name: Security
-    needs: tests
-    uses: trench-live/devops_control_point_1/.github/workflows/security.yml@release
