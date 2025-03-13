@@ -13,7 +13,7 @@ env:
   RELEASE_BRANCH: release
   MINOR: minor
   PATCH: patch
-  VERSION_UP: .github/workflows/version_update.py
+  VERSION_UP: .github/workflows/script.py
   PYTHON_VERSION: '3.13.2'
   GIT_USER_EMAIL: "artemalesin89778@gmail.com"
   GIT_USER_NAME: "trench-live"
