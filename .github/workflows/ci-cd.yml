@@ -93,6 +93,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Debug Docker Hub login
+        run: |
+          echo "DOCKER_HUB_LOGIN: ${{ secrets.DOCKER_HUB_LOGIN }}"
+          echo "REPO_NAME: ${{ env.REPO_NAME }}"
+          echo "TAG: ${{ secrets.DOCKER_HUB_LOGIN }}/${{ env.REPO_NAME }}:v${{ needs.update-version.outputs.tag }}"
+
       - name: Build Docker image
         uses: docker/build-push-action@v2
         with:
