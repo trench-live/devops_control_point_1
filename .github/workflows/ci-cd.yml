@@ -105,7 +105,7 @@ jobs:
           context: .
           file: ./dockerfile
           tags: ${{ secrets.DOCKER_HUB_LOGIN }}/${{ env.REPO_NAME }}:v${{ needs.update-version.outputs.tag }}
-          load: true
+          push: true
 
   docker-push:
     name: (CI) Docker push
@@ -126,4 +126,3 @@ jobs:
           context: .
           push: true
           tags: ${{ secrets.DOCKER_HUB_LOGIN }}/${{ env.REPO_NAME }}:v${{ needs.update-version.outputs.tag }}
-          
