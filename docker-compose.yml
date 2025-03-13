@@ -6,7 +6,7 @@ services:
       - "./volume:/tmp/"
     build:
       context: ./
-      dockerfile: ./dockerfile
+      dockerfile: ./Dockerfile
     ports:
       - "8081:80"
     depends_on:
@@ -19,7 +19,7 @@ services:
       - "./volume:/tmp/"
     build:
       context: ./
-      dockerfile: ./dockerfile
+      dockerfile: Dockerfile
     ports:
       - "8082:80"
     networks:
@@ -34,7 +34,7 @@ services:
       - "./volume:/tmp/"
     build:
       context: ./
-      dockerfile: ./dockerfile
+      dockerfile: Dockerfile
     ports:
       - "8083:80"
     networks:
@@ -49,7 +49,7 @@ services:
       - "./volume:/tmp/"
     build:
       context: ./
-      dockerfile: ./dockerfile
+      dockerfile: Dockerfile
     ports:
       - "8084:80"
     networks:
