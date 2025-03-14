@@ -91,6 +91,9 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2
 
+      - name: List files in workspace
+        run: ls -la
+      
       - name: Debug Docker Hub Login
         run: |
           echo "DOCKER_HUB_LOGIN: ${{ secrets.DOCKER_HUB_LOGIN }}"
