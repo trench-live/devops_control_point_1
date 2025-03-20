@@ -1,104 +1,305 @@
-name: Version Update and Docker Deployment Pipeline
+# Name of your pipeline
+name: Automate Version and Push to Docker
 
+# Trigger on workflow_dispatch or pull_request closed event targeting the release branch
 on:
+  workflow_dispatch:
   pull_request:
     types: [closed]
     branches:
       - release
-      - feature
-      - hotfix
 
+# Environment variables
 env:
-  NAME_VERSION_FILE: ${{ github.workspace }}/version/version
-  RELEASE_BRANCH: release
-  MINOR: minor
-  PATCH: patch
-  VERSION_UP: .github/workflows/script.py
-  PYTHON_VERSION: '3.13.2'
-  GIT_USER_EMAIL: "artemalesin89778@gmail.com"
-  GIT_USER_NAME: "trench-live"
-  DOCKER_REPO: ${{ secrets.DOCKER_HUB_LOGIN }}/${{ github.event.repository.name }}
+  TESTS_WORKFLOW_PATH: trench-live/devops_control_point_1/.github/workflows/test.yml@release
+  BUILD_WORKFLOW_PATH: trench-live/devops_control_point_1/.github/workflows/build.yml@release
+  SECURITY_WORKFLOW_PATH: trench-live/devops_control_point_1/.github/workflows/sec.yml@release
+  DEPLOY_WORKFLOW_PATH: trench-live/devops_control_point_1/.github/workflows/deploy.yml@release
 
+  CHANGELOG_FILE: changelog.md
+  VERSION_FILE_PATH: ${{ github.workspace }}/version
+  VERSION_UP_SCRIPT: .github/workflows/scripts/version_up.py
+
+  REPO_NAME: ${{ github.event.repository.name }}
+  REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+
+  RELEASE_BRANCH: release
+
+  PULL_REQUEST_NUMBER: ${{ github.event.number }}
+
+  CONTAINER_NAME: land_devops
+
+  DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_LOGIN }}
+  DOCKER_HUB_PASSWORD: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+  TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+  TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
+
+# Jobs list for updating versions and deploying
 jobs:
+  pre-merge-check:
+    name: (INF) Print Information
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get branch names
+        id: branch-names
+        uses: tj-actions/branch-names@v8
+
+      - name: Print environment information
+        run: |
+          echo "EVENT NAME: ${{ github.event_name }}"
+          echo "ACTION: ${{ github.event.action }}"
+          echo "CURRENT BRANCH: ${{ steps.branch-names.outputs.current_branch }}"
+          echo "REF: ${{ github.ref }}"
+          echo "REF NAME: ${{ github.ref_name }}"
+          echo "DEFAULT BRANCH: ${{ steps.branch-names.outputs.default_branch }}"
+          echo "WORKSPACE: ${{ github.workspace }}"
+
+  security:
+    name: (SEC) Security Scan
+    needs: pre-merge-check
+    uses: ${{ env.SECURITY_WORKFLOW_PATH }}
+
   tests:
-    name: Run Tests
-    uses: trench-live/devops_control_point_1/.github/workflows/test.yml@release
+    name: (TST) Run Tests
+    needs: security
+    uses: ${{ env.TESTS_WORKFLOW_PATH }}
     with:
       version: alpha
 
-  security:
-    name: Run Security Checks
-    needs: tests
-    uses: trench-live/devops_control_point_1/.github/workflows/security.yml@release
-
   update-version:
-    name: Update Version
-    needs: security
+    name: (VER) Version Update
+    needs: tests
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     outputs:
-      tag: ${{ steps.parse-v.outputs.VERSION }}
+      tag: ${{ steps.get-commit-txt.outputs.TAG_MSG }}
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v2
-
-      - name: Parse Branch Name
-        id: parse-data
+      - name: Get branch names
+        id: branch-names
         uses: tj-actions/branch-names@v8
 
-      - name: Validate Branch (Feature/Hotfix)
-        id: validate-branch
-        if: |
-          contains(steps.parse-data.outputs.current_branch, 'feature') || 
-          contains(steps.parse-data.outputs.current_branch, 'hotfix')
-        run: echo "Valid branch"
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Run Minor Version Update Script
-        id: update-minor-version
-        if: contains(steps.parse-data.outputs.current_branch, 'feature')
+      - name: Print version file path
         run: |
-          python ${{ env.VERSION_UP }} ${{ env.MINOR }}
+          echo "Path to version file: ${{ env.VERSION_FILE_PATH }}"
 
-      - name: Run Patch Version Update Script
-        id: update-patch-version
-        if: contains(steps.parse-data.outputs.current_branch, 'hotfix')
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Update version (minor)
+        if: startsWith(steps.branch-names.outputs.current_branch, 'feature')
+        run: python ${{ env.VERSION_UP_SCRIPT }} ${{ env.VERSION_FILE_PATH }} minor
+
+      - name: Update version (patch)
+        if: startsWith(steps.branch-names.outputs.current_branch, 'hotfix')
+        run: python ${{ env.VERSION_UP_SCRIPT }} ${{ env.VERSION_FILE_PATH }} patch
+
+      - name: Generate commit and tag messages
+        id: get-commit-txt
         run: |
-          python ${{ env.VERSION_UP }} ${{ env.PATCH }}
+          COMMIT_MSG=$(python ${{ env.VERSION_UP_SCRIPT }} ${{ env.VERSION_FILE_PATH }} version_log -1)
+          TAG_MSG=$(python ${{ env.VERSION_UP_SCRIPT }} ${{ env.VERSION_FILE_PATH }} version)
+          echo "COMMIT_MSG=${COMMIT_MSG}" >> $GITHUB_ENV
+          echo "TAG_MSG=${TAG_MSG}" >> $GITHUB_ENV
+          echo "TAG_MSG=${TAG_MSG}" >> $GITHUB_OUTPUT
 
       - name: Configure Git
         run: |
-          git config --global user.email "${{ env.GIT_USER_EMAIL }}"
-          git config --global user.name "${{ env.GIT_USER_NAME }}"
+          git config user.name "GitHub Actions Bot"
+          git config user.email "<>"
 
-      - name: Commit and Push Changes
+      - name: Commit and push changes
         run: |
-          git add version version_log
-          git commit -m "Update version and log"
-          git push origin ${{ env.RELEASE_BRANCH }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          git add .
+          git commit -m "${{ env.COMMIT_MSG }}"
+          git tag -a v${{ env.TAG_MSG }} -m "Update tag"
+          git push -u origin ${{ env.RELEASE_BRANCH }} --tags
 
-      - name: Get Version
-        id: parse-v
-        run: |
-          VERSION=$(cat version)
-          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
-
-  docker:
-    name: Build and push
-    needs: update-version
+  changelog:
+    name: (VER) Update Changelog
+    permissions:
+      contents: write
+      pull-requests: write
+      repository-projects: write
+      id-token: write
     runs-on: ubuntu-latest
+    needs: update-version
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Update changelog
+        run: |
+          echo "---" >> ${{ env.CHANGELOG_FILE }}
+          echo "#### [${{ needs.update-version.outputs.tag }}] - $(date +'%Y.%m.%d') ${{ github.event.pull_request.head.ref }}" >> ${{ env.CHANGELOG_FILE }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "<>"
+
+      - name: Commit and push changelog
+        run: |
+          git add .
+          git commit -m "[${{ needs.update-version.outputs.tag }}] Update ${{ env.CHANGELOG_FILE }}"
+          git push -u origin ${{ env.RELEASE_BRANCH }}
+
+      - name: Upload changelog as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.CHANGELOG_FILE }}
+          path: ${{ env.CHANGELOG_FILE }}
+
+      - name: Add PR comment
+        if: ${{ env.PULL_REQUEST_NUMBER }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '${{ env.CHANGELOG_FILE }} has been updated. The new version is available in the repository root.'
+            })
+
+      - name: Add label to PR
+        if: ${{ env.PULL_REQUEST_NUMBER }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['changelog-${{ needs.update-version.outputs.tag }}']
+            })
+
+  build:
+    name: (BUILD) Build
+    needs: changelog
+    uses: ${{ env.BUILD_WORKFLOW_PATH }}
+    permissions:
+      contents: write
+      pull-requests: write
+      repository-projects: write
+      id-token: write
+
+  docker-push:
+    name: (CI) Docker Push
+    permissions:
+      contents: write
+      pull-requests: write
+      repository-projects: write
+      id-token: write
+    runs-on: ubuntu-latest
+    needs: [build, update-version]
+    env:
+      TAG: ${{ needs.update-version.outputs.tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_HUB_LOGIN }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Build and push
-        uses: docker/build-push-action@v6
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ env.DOCKER_HUB_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
         with:
+          context: .
+          file: ./dockerfile
           push: true
-          tags: user/app:latest
+          tags: ${{ env.DOCKER_HUB_USERNAME }}/${{ env.REPO_NAME }}:v${{ env.TAG }}
+
+      - name: Update Docker Hub description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ env.DOCKER_HUB_PASSWORD }}
+          repository: ${{ env.DOCKER_HUB_USERNAME }}/${{ env.CONTAINER_NAME }}
+          short-description: ${{ github.event.repository.description }}
+          readme-filepath: ./README.md
+          enable-url-completion: true
+
+      - name: Add Docker label to PR
+        if: ${{ env.PULL_REQUEST_NUMBER }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['dockerhub', '${{ env.TAG }}']
+            })
+
+  final-notify:
+    name: (TG) Final Notification
+    needs: [docker-push, update-version]
+    env:
+      TAG: ${{ needs.update-version.outputs.tag }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get branch names
+        id: branch-names
+        uses: tj-actions/branch-names@v8
+
+      - name: Get current time
+        id: current-time
+        run: |
+          echo "CURRENT_TIME=$(date +'%Y.%m.%d %H:%M:%S')" >> $GITHUB_ENV
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download changelog artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.CHANGELOG_FILE }}
+
+      - name: Send Telegram notification
+        uses: appleboy/telegram-action@v1.0.0
+        with:
+          to: ${{ env.TELEGRAM_TO }}
+          token: ${{ env.TELEGRAM_TOKEN }}
+          format: html
+          document: ${{ env.CHANGELOG_FILE }}
+          message: |
+            New release changes
+            <b>Project</b>: <code>${{ env.REPO_NAME }}</code>
+            <b>Version</b>: <code>${{ env.TAG }}</code>
+            <b>Date</b>: <code>${{ env.CURRENT_TIME }}</code>
+            <b>Author</b>: <a href="#">Some Person</a>
+
+            Git Repository Information
+            <b>GIT MR</b>: <a href="${{ env.REPO_URL }}/pull/${{ env.PULL_REQUEST_NUMBER }}">${{ env.PULL_REQUEST_NUMBER }}</a>
+            <b>GIT TAG</b>: <a href="${{ env.REPO_URL }}/releases/tag/v${{ steps.branch-names.outputs.tag }}">${{ env.TAG }}</a>
+
+            Docker Repository Information
+            <b>Owner</b>: <a href="https://hub.docker.com/repositories/${{ env.DOCKER_HUB_USERNAME }}">${{ env.DOCKER_HUB_USERNAME }}</a>
+            <b>Repository</b>: <a href="https://hub.docker.com/repository/docker/${{ env.DOCKER_HUB_USERNAME }}/${{ env.REPO_NAME }}/general">${{ env.REPO_NAME }}</a>
+            <b>Tag</b>: <a href="https://hub.docker.com/repository/docker/${{ env.DOCKER_HUB_USERNAME }}/${{ env.REPO_NAME }}/tags/v">${{ env.TAG }}</a>
+            <b>Full Name</b>: <a href="https://hub.docker.com/repository/docker/${{ env.DOCKER_HUB_USERNAME }}/${{ env.REPO_NAME }}/tags">${{ env.DOCKER_HUB_USERNAME }}/${{ env.REPO_NAME }}:v${{ env.TAG }}</a>
+
+  deploy:
+    name: Deploy
+    needs: [final-notify, update-version]
+    uses: ${{ env.DEPLOY_WORKFLOW_PATH }}
+    with:
+      version: v${{ needs.update-version.outputs.tag }}
+      container_name: ${{ env.CONTAINER_NAME }}
+    secrets:
+      DOCKER_USERNAME: ${{ env.DOCKER_HUB_USERNAME }}
+    permissions:
+      contents: write
+      pull-requests: write
+      repository-projects: write
+      id-token: write
