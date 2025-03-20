@@ -13,7 +13,7 @@ on:
 env:
   TESTS_WORKFLOW_PATH: trench-live/devops_control_point_1/.github/workflows/test.yml@release
   BUILD_WORKFLOW_PATH: trench-live/devops_control_point_1/.github/workflows/build.yml@release
-  SECURITY_WORKFLOW_PATH: trench-live/devops_control_point_1/.github/workflows/sec.yml@release
+  SECURITY_WORKFLOW_PATH: trench-live/devops_control_point_1/.github/workflows/security.yml@release
   DEPLOY_WORKFLOW_PATH: trench-live/devops_control_point_1/.github/workflows/deploy.yml@release
 
   CHANGELOG_FILE: changelog.md
