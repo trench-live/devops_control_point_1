@@ -9,7 +9,7 @@ on:
 
 env:
   REPO_NAME: ${{ github.event.repository.name }}
-  CONTAINER_NAME: land_devops
+  CONTAINER_NAME: devops_control_point_1
   DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_LOGIN }}
   DOCKER_HUB_PASSWORD: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
